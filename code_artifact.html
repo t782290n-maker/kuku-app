@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>めざせ！くくマスター！ - たのしい掛け算アプリ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti for Celebration effects -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts for POP look -->
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            touch-action: manipulation;
+        }
+        
+        .btn-pop {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.15);
+        }
+        .btn-pop:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+        }
+
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+        .bounce-in {
+            animation: bounceIn 0.5s ease;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        /* Gradient backgrounds */
+        .bg-pop-pattern {
+            background-color: #fff9e6;
+            background-image: radial-gradient(#ffd166 1.5px, transparent 1.5px), radial-gradient(#ffd166 1.5px, #fff9e6 1.5px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+        }
+    </style>
+</head>
+<body class="bg-pop-pattern min-h-screen text-slate-800 flex flex-col justify-between selection:bg-yellow-300">
+
+    <header class="w-full bg-amber-400 border-b-4 border-amber-500 py-3 px-4 shadow-md text-center relative z-10">
+        <div class="max-w-2xl mx-auto flex justify-between items-center">
+            <button id="home-btn" onclick="showScreen('select')" class="hidden bg-white hover:bg-amber-100 text-amber-700 font-bold py-1 px-3 rounded-full border-2 border-amber-500 text-sm md:text-base btn-pop">
+                🏠 たんせんたく
+            </button>
+            <h1 class="text-xl md:text-2xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)] mx-auto">
+                ✨ めざせ！くくマスター！ ✨
+            </h1>
+            <div class="w-16"></div> <!-- Spacer for center alignment -->
+        </div>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center p-4">
+        <div class="w-full max-w-xl bg-white rounded-3xl border-4 border-amber-300 shadow-xl p-5 md:p-8 relative overflow-hidden">
+            
+            <!-- SCREEN 1: SELECT MODE & STAGE -->
+            <section id="screen-select" class="space-y-6">
+                <div class="text-center">
+                    <span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full uppercase">モードをえらぼう</span>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-amber-600 mt-1">なんの「だん」をれんしゅうする？</h2>
+                </div>
+
+                <!-- Mode Selector -->
+                <div class="flex justify-center gap-3 bg-amber-50 p-2 rounded-2xl border-2 border-amber-200">
+                    <button id="mode-normal" onclick="setGameMode('normal')" class="flex-1 py-2 px-3 rounded-xl font-bold text-sm md:text-base bg-amber-500 text-white shadow-sm transition-all">
+                        🐢 じっくり練習
+                    </button>
+                    <button id="mode-time" onclick="setGameMode('time')" class="flex-1 py-2 px-3 rounded-xl font-bold text-sm md:text-base bg-slate-200 text-slate-600 transition-all">
+                        ⚡ タイムアタック
+                    </button>
+                </div>
+
+                <!-- Stage Buttons Grid (1-9 Dan) -->
+                <div class="grid grid-cols-3 gap-3">
+                    <script>
+                        for (let i = 1; i <= 9; i++) {
+                            document.write(`
+                                <button onclick="startGame(${i})" class="btn-pop bg-sky-400 hover:bg-sky-500 text-white font-black text-xl md:text-2xl py-4 rounded-2xl border-b-4 border-sky-600 transition flex flex-col items-center justify-center">
+                                    <span>${i} のだん</span>
+                                    <span id="highscore-${i}" class="text-[10px] md:text-xs font-normal opacity-90">さいこう: --</span>
+                                </button>
+                            `);
+                        }
+                    </script>
+                </div>
+
+                <!-- Special Buttons -->
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button onclick="startGame('random')" class="btn-pop bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-base md:text-lg py-3 rounded-2xl border-b-4 border-purple-700 transition">
+                        🎲 ぜんぶ（ランダム）
+                    </button>
+                    <button onclick="startGame('weak')" id="btn-weak-mode" class="btn-pop bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-base md:text-lg py-3 rounded-2xl border-b-4 border-rose-700 transition relative">
+                        🔥 にがてをおさらい
+                        <span id="weak-count-badge" class="absolute -top-2 -right-2 bg-yellow-400 text-rose-900 text-xs px-2 py-0.5 rounded-full border border-rose-600 font-bold hidden">0</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- SCREEN 2: QUIZ INTERFACE -->
+            <section id="screen-quiz" class="hidden space-y-5">
+                <!-- Status Bar -->
+                <div class="flex justify-between items-center text-slate-600 font-bold text-sm md:text-base border-b-2 border-slate-100 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span id="quiz-stage-title" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs md:text-sm">7のだん</span>
+                        <span id="timer-display" class="text-rose-500 hidden">⏱️ <span id="time-val">0.0</span>s</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">もんだい:</span>
+                        <span id="current-q-num" class="text-amber-600 text-lg">1</span> / <span id="total-q-num">10</span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                    <div id="progress-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
+                </div>
+
+                <!-- Question Card -->
+                <div id="question-card" class="bg-amber-50 rounded-3xl p-6 border-2 border-amber-200 text-center relative shadow-inner">
+                    <button onclick="speakCurrentQuestion()" class="absolute top-3 right-3 bg-white p-2 rounded-full border border-amber-300 hover:bg-amber-100 text-amber-600 shadow-sm transition" title="よみあげる">
+                        🔊
+                    </button>
+                    <div id="question-text" class="text-5xl md:text-6xl font-black text-slate-800 tracking-wider my-2">
+                        7 × 8 = ?
+                    </div>
+                </div>
+
+                <!-- Feedback Banner (Correct/Incorrect) -->
+                <div id="feedback-banner" class="h-10 text-center font-black text-xl flex items-center justify-center rounded-xl opacity-0 transition-opacity">
+                    <span id="feedback-text">正解！</span>
+                </div>
+
+                <!-- Answer Choices (4 Options) -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="checkAnswer(0)" id="choice-0" class="choice-btn btn-pop bg-emerald-400 hover:bg-emerald-500 border-emerald-600 text-white font-black text-3xl md:text-4xl py-5 rounded-2xl border-b-4 transition">--</button>
+                    <button onclick="checkAnswer(1)" id="choice-1" class="choice-btn btn-pop bg-sky-400 hover:bg-sky-500 border-sky-600 text-white font-black text-3xl md:text-4xl py-5 rounded-2xl border-b-4 transition">--</button>
+                    <button onclick="checkAnswer(2)" id="choice-2" class="choice-btn btn-pop bg-amber-400 hover:bg-amber-500 border-amber-600 text-white font-black text-3xl md:text-4xl py-5 rounded-2xl border-b-4 transition">--</button>
+                    <button onclick="checkAnswer(3)" id="choice-3" class="choice-btn btn-pop bg-pink-400 hover:bg-pink-500 border-pink-600 text-white font-black text-3xl md:text-4xl py-5 rounded-2xl border-b-4 transition">--</button>
+                </div>
+            </section>
+
+            <!-- SCREEN 3: RESULT INTERFACE -->
+            <section id="screen-result" class="hidden space-y-6 text-center bounce-in">
+                <div>
+                    <span id="result-badge" class="bg-amber-100 text-amber-800 text-xs md:text-sm font-bold px-4 py-1.5 rounded-full">けっか はっぴょう</span>
+                    <h2 id="result-rank" class="text-3xl md:text-4xl font-black text-amber-600 mt-2">たいへんよくできました！</h2>
+                </div>
+
+                <!-- Score Box -->
+                <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-6 shadow-sm flex justify-around items-center">
+                    <div>
+                        <div class="text-xs md:text-sm font-bold text-slate-400">せいかいすう</div>
+                        <div class="text-3xl md:text-4xl font-black text-emerald-500"><span id="result-score">10</span> / <span id="result-total">10</span></div>
+                    </div>
+                    <div class="h-10 w-0.5 bg-amber-200"></div>
+                    <div>
+                        <div class="text-xs md:text-sm font-bold text-slate-400">かかったじかん</div>
+                        <div class="text-3xl md:text-4xl font-black text-sky-500"><span id="result-time">12.5</span><span class="text-sm">びょう</span></div>
+                    </div>
+                </div>
+
+                <!-- Missed Questions List -->
+                <div id="missed-container" class="text-left bg-rose-50 border border-rose-200 rounded-2xl p-4 hidden">
+                    <h3 class="font-extrabold text-rose-700 text-sm md:text-base mb-2 flex items-center gap-1">
+                        ⚠️ まちがえた もんだい（にがてリストに とうろくされたよ）
+                    </h3>
+                    <div id="missed-list" class="grid grid-cols-2 gap-2 text-sm md:text-base font-bold text-slate-700">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col md:flex-row gap-3 pt-2">
+                    <button onclick="retryGame()" class="btn-pop flex-1 bg-amber-400 hover:bg-amber-500 text-white font-extrabold text-lg py-3 rounded-2xl border-b-4 border-amber-600">
+                        🔄 もういちど あそぶ
+                    </button>
+                    <button onclick="showScreen('select')" class="btn-pop flex-1 bg-slate-400 hover:bg-slate-500 text-white font-extrabold text-lg py-3 rounded-2xl border-b-4 border-slate-600">
+                        🏠 つぎの だんへ
+                    </button>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="py-3 text-center text-xs text-amber-700 font-medium">
+        しょうがくせい向け くくマスター！アプリ 🌸 たのしく まいにち れんしゅうしよう！
+    </footer>
+
+    <script>
+        // --- Web Audio API Synthesizer for Sound Effects ---
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+        }
+
+        // Play Sound Effect (Correct / Incorrect)
+        function playSE(type) {
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                // High ping-pong 2-tone
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(659.25, now); // E5
+                osc.frequency.setValueAtTime(880, now + 0.1); // A5
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'incorrect') {
+                // Low buzz
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.setValueAtTime(120, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'finish') {
+                // Fanfare sound
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+                notes.forEach((freq, idx) => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.type = 'triangle';
+                    osc2.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    gain2.gain.setValueAtTime(0.2, now + idx * 0.1);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+                    osc2.start(now + idx * 0.1);
+                    osc2.stop(now + idx * 0.1 + 0.3);
+                });
+            }
+        }
+
+        // --- Speech Synthesis for Reading Questions ---
+        function speakCurrentQuestion() {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel(); // Stop any ongoing speech
+
+            const q = currentQuestions[currentIndex];
+            if (!q) return;
+
+            // Japanese multiplication reading style (e.g. 7×8 -> 7 かける 8 は)
+            const text = `${q.a} かける ${q.b} は？`;
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ja-JP';
+            uttr.rate = 1.0;
+            uttr.pitch = 1.2; // Slightly higher pitch for kids
+            window.speechSynthesis.speak(uttr);
+        }
+
+        // --- Game State Variables ---
+        let currentMode = 'normal'; // 'normal' | 'time'
+        let currentStage = 1; // 1-9 | 'random' | 'weak'
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
+        let missedQuestions = [];
+        let startTime = 0;
+        let timerInterval = null;
+        let elapsedTime = 0;
+        let isAnswering = false;
+
+        // --- LocalStorage Keys ---
+        const WEAK_STORAGE_KEY = 'kuku_weak_list';
+        const HIGHSCORE_STORAGE_KEY = 'kuku_highscores';
+
+        // Get saved weak questions
+        function getWeakList() {
+            const data = localStorage.getItem(WEAK_STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        // Save weak questions
+        function saveWeakQuestion(a, b) {
+            let list = getWeakList();
+            if (!list.some(q => q.a === a && q.b === b)) {
+                list.push({ a, b });
+                localStorage.setItem(WEAK_STORAGE_KEY, JSON.stringify(list));
+            }
+            updateWeakBadge();
+        }
+
+        // Remove from weak list when answered correctly
+        function removeWeakQuestion(a, b) {
+            let list = getWeakList();
+            list = list.filter(q => !(q.a === a && q.b === b));
+            localStorage.setItem(WEAK_STORAGE_KEY, JSON.stringify(list));
+            updateWeakBadge();
+        }
+
+        // Update weak count badge on title screen
+        function updateWeakBadge() {
+            const list = getWeakList();
+            const badge = document.getElementById('weak-count-badge');
+            if (list.length > 0) {
+                badge.textContent = list.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // HighScores
+        function getHighscore(stage) {
+            const data = localStorage.getItem(HIGHSCORE_STORAGE_KEY);
+            const scores = data ? JSON.parse(data) : {};
+            return scores[stage] || null;
+        }
+
+        function saveHighscore(stage, timeSec) {
+            const data = localStorage.getItem(HIGHSCORE_STORAGE_KEY);
+            const scores = data ? JSON.parse(data) : {};
+            if (!scores[stage] || timeSec < scores[stage]) {
+                scores[stage] = timeSec;
+                localStorage.setItem(HIGHSCORE_STORAGE_KEY, JSON.stringify(scores));
+                updateHighscoreDisplays();
+            }
+        }
+
+        function updateHighscoreDisplays() {
+            for (let i = 1; i <= 9; i++) {
+                const hs = getHighscore(i);
+                const el = document.getElementById(`highscore-${i}`);
+                if (el) {
+                    el.textContent = hs ? `さいこう: ${hs.toFixed(1)}s` : 'さいこう: --';
+                }
+            }
+        }
+
+        // --- Mode & Navigation ---
+        function setGameMode(mode) {
+            currentMode = mode;
+            const btnNormal = document.getElementById('mode-normal');
+            const btnTime = document.getElementById('mode-time');
+
+            if (mode === 'normal') {
+                btnNormal.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-sm md:text-base bg-amber-500 text-white shadow-sm transition-all';
+                btnTime.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-sm md:text-base bg-slate-200 text-slate-600 transition-all';
+            } else {
+                btnTime.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-sm md:text-base bg-rose-500 text-white shadow-sm transition-all';
+                btnNormal.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-sm md:text-base bg-slate-200 text-slate-600 transition-all';
+            }
+        }
+
+        function showScreen(screenId) {
+            document.getElementById('screen-select').classList.add('hidden');
+            document.getElementById('screen-quiz').classList.add('hidden');
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('home-btn').classList.toggle('hidden', screenId === 'select');
+
+            document.getElementById(`screen-${screenId}`).classList.remove('hidden');
+
+            if (screenId === 'select') {
+                clearInterval(timerInterval);
+                updateWeakBadge();
+                updateHighscoreDisplays();
+            }
+        }
+
+        // Generate Questions Array
+        function generateQuestions(stage) {
+            let qList = [];
+
+            if (typeof stage === 'number') {
+                // Single Dan (1-9) -> 9 questions
+                for (let i = 1; i <= 9; i++) {
+                    qList.push({ a: stage, b: i, ans: stage * i });
+                }
+            } else if (stage === 'random') {
+                // Random 10 questions from all 1-9
+                for (let i = 0; i < 10; i++) {
+                    const a = Math.floor(Math.random() * 9) + 1;
+                    const b = Math.floor(Math.random() * 9) + 1;
+                    qList.push({ a, b, ans: a * b });
+                }
+            } else if (stage === 'weak') {
+                // From saved weak list
+                const list = getWeakList();
+                if (list.length === 0) {
+                    alert('にがてな もんだいは まだ ありません！');
+                    return null;
+                }
+                // Shuffle saved weak list
+                qList = [...list].map(item => ({ a: item.a, b: item.b, ans: item.a * item.b }));
+                qList.sort(() => Math.random() - 0.5);
+                if (qList.length > 10) qList = qList.slice(0, 10);
+            }
+
+            // Shuffle questions except order mode in single dan if desired (let's shuffle all for quiz)
+            return qList.sort(() => Math.random() - 0.5);
+        }
+
+        function startGame(stage) {
+            initAudio();
+            const questions = generateQuestions(stage);
+            if (!questions || questions.length === 0) return;
+
+            currentStage = stage;
+            currentQuestions = questions;
+            currentIndex = 0;
+            score = 0;
+            missedQuestions = [];
+            elapsedTime = 0;
+            isAnswering = false;
+
+            // Setup Header UI
+            const stageTitleEl = document.getElementById('quiz-stage-title');
+            if (typeof stage === 'number') stageTitleEl.textContent = `${stage} のだん`;
+            else if (stage === 'random') stageTitleEl.textContent = '🎲 ランダム';
+            else stageTitleEl.textContent = '🔥 にがて おさらい';
+
+            document.getElementById('total-q-num').textContent = currentQuestions.length;
+
+            // Timer Setup
+            const timerDisplay = document.getElementById('timer-display');
+            if (currentMode === 'time') {
+                timerDisplay.classList.remove('hidden');
+                startTime = Date.now();
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    elapsedTime = (Date.now() - startTime) / 1000;
+                    document.getElementById('time-val').textContent = elapsedTime.toFixed(1);
+                }, 100);
+            } else {
+                timerDisplay.classList.add('hidden');
+            }
+
+            showScreen('quiz');
+            loadQuestion();
+        }
+
+        function retryGame() {
+            startGame(currentStage);
+        }
+
+        // Load Question onto UI
+        function loadQuestion() {
+            if (currentIndex >= currentQuestions.length) {
+                finishGame();
+                return;
+            }
+
+            isAnswering = true;
+            const q = currentQuestions[currentIndex];
+
+            // Update Progress
+            document.getElementById('current-q-num').textContent = currentIndex + 1;
+            const progressPercent = (currentIndex / currentQuestions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+            // Display Question
+            document.getElementById('question-text').textContent = `${q.a} × ${q.b} = ?`;
+
+            // Speak Speech API
+            speakCurrentQuestion();
+
+            // Generate 4 Options (1 correct, 3 wrong)
+            const choices = generateChoices(q.ans, q.a);
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`choice-${i}`);
+                btn.textContent = choices[i];
+                btn.dataset.val = choices[i];
+                btn.className = btn.className.replace(/bg-gray-\d+/g, '').replace(/opacity-\d+/g, '');
+                btn.disabled = false;
+            }
+
+            // Clear feedback banner
+            const fb = document.getElementById('feedback-banner');
+            fb.classList.add('opacity-0');
+        }
+
+        // Generate 4 plausible distractor choices
+        function generateChoices(correctAns, dan) {
+            const choicesSet = new Set([correctAns]);
+
+            // Common multipliers in 九九
+            while (choicesSet.size < 4) {
+                let fake;
+                const randType = Math.random();
+                if (randType < 0.4) {
+                    // Close answer (+- dan)
+                    fake = correctAns + (Math.random() < 0.5 ? dan : -dan);
+                } else if (randType < 0.7) {
+                    // Reversed or close number
+                    fake = correctAns + (Math.random() < 0.5 ? 2 : -2);
+                } else {
+                    // Random number from 九九 table
+                    fake = (Math.floor(Math.random() * 9) + 1) * (Math.floor(Math.random() * 9) + 1);
+                }
+
+                if (fake > 0 && fake <= 81 && fake !== correctAns) {
+                    choicesSet.add(fake);
+                }
+            }
+
+            // Convert to array and shuffle
+            return Array.from(choicesSet).sort(() => Math.random() - 0.5);
+        }
+
+        // Check User Answer
+        function checkAnswer(choiceIdx) {
+            if (!isAnswering) return;
+            isAnswering = false;
+
+            const selectedBtn = document.getElementById(`choice-${choiceIdx}`);
+            const selectedVal = parseInt(selectedBtn.dataset.val, 10);
+            const q = currentQuestions[currentIndex];
+            const fb = document.getElementById('feedback-banner');
+            const fbText = document.getElementById('feedback-text');
+
+            if (selectedVal === q.ans) {
+                // Correct!
+                score++;
+                playSE('correct');
+                fb.className = 'h-10 text-center font-black text-xl flex items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 opacity-100 bounce-in';
+                fbText.textContent = '⭕ せいかい！ すごい！';
+
+                // Confetti small burst
+                confetti({
+                    particleCount: 25,
+                    spread: 50,
+                    origin: { y: 0.7 }
+                });
+
+                // Remove from weak list if correct
+                removeWeakQuestion(q.a, q.b);
+
+            } else {
+                // Incorrect!
+                playSE('incorrect');
+                fb.className = 'h-10 text-center font-black text-xl flex items-center justify-center rounded-xl bg-rose-100 text-rose-700 opacity-100 shake';
+                fbText.textContent = `❌ おしい！ こたえは ${q.ans} だよ！`;
+
+                // Add to missed
+                missedQuestions.push(q);
+                saveWeakQuestion(q.a, q.b);
+            }
+
+            // Next Question Delay
+            setTimeout(() => {
+                currentIndex++;
+                loadQuestion();
+            }, selectedVal === q.ans ? 800 : 1800);
+        }
+
+        // Finish Game & Display Results
+        function finishGame() {
+            clearInterval(timerInterval);
+            if (currentMode === 'time') {
+                elapsedTime = (Date.now() - startTime) / 1000;
+            }
+
+            // Save Highscore if 100% correct in time attack mode
+            if (currentMode === 'time' && score === currentQuestions.length && typeof currentStage === 'number') {
+                saveHighscore(currentStage, elapsedTime);
+            }
+
+            playSE('finish');
+
+            // Celebration Confetti for good performance
+            if (score === currentQuestions.length) {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            // Update Result UI
+            document.getElementById('result-score').textContent = score;
+            document.getElementById('result-total').textContent = currentQuestions.length;
+            document.getElementById('result-time').textContent = elapsedTime > 0 ? elapsedTime.toFixed(1) : '--';
+
+            // Rank Message
+            const rankEl = document.getElementById('result-rank');
+            const ratio = score / currentQuestions.length;
+            if (ratio === 1) {
+                rankEl.textContent = '👑 くくマスター！ パーフェクト！';
+                rankEl.className = 'text-3xl md:text-4xl font-black text-amber-500 mt-2';
+            } else if (ratio >= 0.7) {
+                rankEl.textContent = '✨ すごい！ あとすこし！';
+                rankEl.className = 'text-3xl md:text-4xl font-black text-sky-500 mt-2';
+            } else {
+                rankEl.textContent = '🌱 なんども れんしゅうしよう！';
+                rankEl.className = 'text-3xl md:text-4xl font-black text-emerald-500 mt-2';
+            }
+
+            // Render Missed List
+            const missedContainer = document.getElementById('missed-container');
+            const missedListEl = document.getElementById('missed-list');
+            if (missedQuestions.length > 0) {
+                missedContainer.classList.remove('hidden');
+                missedListEl.innerHTML = missedQuestions.map(q => `
+                    <div class="bg-white p-2 rounded-xl border border-rose-200 flex justify-between items-center">
+                        <span>${q.a} × ${q.b}</span>
+                        <span class="text-rose-600 font-black">= ${q.ans}</span>
+                    </div>
+                `).join('');
+            } else {
+                missedContainer.classList.add('hidden');
+            }
+
+            showScreen('result');
+        }
+
+        // Initialize App on Load
+        window.onload = function() {
+            updateWeakBadge();
+            updateHighscoreDisplays();
+        };
+    </script>
+</body>
+</html>
